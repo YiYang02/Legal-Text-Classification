@@ -1,68 +1,85 @@
 """
-Script-Level Docstring. Complete when uploading this script file to Github.
-
 @author: Yi Yang
+@contact: yyang2@bowdoin.edu
+@date: 8-4-2021
+@desc:
+
+This script creates two CSV files to help with tf-idf and classifier training.
+
+This tool requires the use of the master_clauses.csv file found in the CUAD folder from the Atticus Project.
+
+The first CSV file contains four columns: sentence text, sentence id, file id, and file category. The column data
+are pre-processed with data from the master_clauses.csv file in the CUAD folder.
+
+The second CSV file contains three columns: document text, document id, category id. The column data are also
+pre-processed with data from the master_clauses.csv file in the CUAD folder.
+
+This script requires that 'pandas' be installed within the Python environment you are running the script in. Also,
+file paths have been hard-coded, and requires user to manually change them in the code.
+
+The file can also be imported as a module and contains the following functions:
+    Main Functions:
+        - extract_and_create_sentencelevel_csv
+        - extract_and_create_documentlevel_csv
+    Helper Functions for the above main functions:
+        - convert_dictval_to_id
+        - extract_headerrow_from_csvfile
+        - inverted_dictionary
+        - extract_clausesentences_cols
+        - preprocessing
+
 """
 
 import re
-import string
-
 import pandas as pd
 from nltk.stem.snowball import SnowballStemmer
 from nltk.corpus import stopwords
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
-from sklearn.metrics import confusion_matrix, accuracy_score, classification_report
-from sklearn.model_selection import train_test_split
 from textblob import TextBlob
 
 # Dictionary: key - category of the legal contract; value - unique number identifier
 CONTRACT_CATEGORIES = {'Affiliate Agreement': 0,
-                           'Agency Agreement': 1,
-                           'Co-Branding Agreement': 2,
-                           'Collaboration Agreement': 3,
-                           'Cooperation Agreement': 3,
-                           'Consulting Agreement': 4,
-                           'Development Agreement': 5,
-                           'Distribution Agreement': 6,
-                           'Distributor Agreement': 6,
-                           'Endorsement Agreement': 7,
-                           'Franchise Agreement': 8,
-                           'Hosting Agreement': 9,
-                           'Intellectual Property Agreement': 10,
-                           'Joint Venture Agreement': 11,
-                           'License Agreement': 12,
-                           'Maintenance Agreement': 13,
-                           'Manufacturing Agreement': 14,
-                           'Marketing Agreement': 15,
-                           'Non-Compete Agreement': 16,
-                           'Non Competition Agreement': 16,
-                           'No-Solicit Agreement': 16,
-                           'Non-Disparagement Agreement': 16,
-                           'Outsourcing Agreement': 17,
-                           'Promotion Agreement': 18,
-                           'Reseller Agreement': 19,
-                           'Service Agreement': 20,
-                           'Sponsorship Agreement': 21,
-                           'Strategic Alliance Agreement': 22,
-                           'Supply Agreement': 23,
-                           'Transportation Agreement': 24
-                           }
+                       'Agency Agreement': 1,
+                       'Co-Branding Agreement': 2,
+                       'Collaboration Agreement': 3,
+                       'Cooperation Agreement': 3,
+                       'Consulting Agreement': 4,
+                       'Development Agreement': 5,
+                       'Distribution Agreement': 6,
+                       'Distributor Agreement': 6,
+                       'Endorsement Agreement': 7,
+                       'Franchise Agreement': 8,
+                       'Hosting Agreement': 9,
+                       'Intellectual Property Agreement': 10,
+                       'Joint Venture Agreement': 11,
+                       'License Agreement': 12,
+                       'Maintenance Agreement': 13,
+                       'Manufacturing Agreement': 14,
+                       'Marketing Agreement': 15,
+                       'Non-Compete Agreement': 16,
+                       'Non Competition Agreement': 16,
+                       'No-Solicit Agreement': 16,
+                       'Non-Disparagement Agreement': 16,
+                       'Outsourcing Agreement': 17,
+                       'Promotion Agreement': 18,
+                       'Reseller Agreement': 19,
+                       'Service Agreement': 20,
+                       'Sponsorship Agreement': 21,
+                       'Strategic Alliance Agreement': 22,
+                       'Supply Agreement': 23,
+                       'Transportation Agreement': 24
+                       }
 
 # File path to access master_clauses.csv file
-masterclauses_filepath = r'C:\Users\yiyan\Desktop\Legal Text Classification\master_clauses.csv'
+master_clauses_fp = r'C:\Users\yiyan\Desktop\Legal Text Classification\master_clauses.csv'
 
-fileid_to_filenames = pd.read_csv(masterclauses_filepath, usecols=['Filename'])
+fileid_to_filenames = pd.read_csv(master_clauses_fp, usecols=['Filename'])
 # Dictionary: key - unique number identifier; value - legal contract file name (string)
 DICT_FILEID_TO_FILENAMES = fileid_to_filenames.to_dict(orient='dict')['Filename']
-# print(DICT_FILEID_TO_FILENAMES)
 
-fileid_to_rawcategory = pd.read_csv(masterclauses_filepath, usecols=['Document Name-Answer'])
+fileid_to_rawcategory = pd.read_csv(master_clauses_fp, usecols=['Document Name-Answer'])
 
 # Dictionary: key - unique number identifier; value - legal contract file category (unprocessed string)
 DICT_FILEID_TO_RAWCATEGORY = fileid_to_rawcategory.to_dict(orient='dict')['Document Name-Answer']
-
-# print(DICT_FILEID_TO_RAWCATEGORY)
 
 
 def convert_dictval_to_id(dictionary: dict):
@@ -74,7 +91,7 @@ def convert_dictval_to_id(dictionary: dict):
         dictionary (dict): Dictionary with key-value pairs of legal file_id and legal category_names (unprocessed string)
 
     Returns:
-        Iterable[dict]: Dictionary with key as document_id and value as category_id
+        dictionary: Dictionary with key as document_id and value as category_id
     """
 
     dict_fileid_to_categoryid = {}
@@ -121,10 +138,10 @@ def convert_dictval_to_id(dictionary: dict):
                     break
 
     # Debugging to check which files fell through and didn't get processed
-    # print("File IDs that didn't get processed: ")
-    # for i in range(510):
-    #     if i not in dict_fileid_to_categoryid:
-    #         print(i, dictionary[i])
+    print("File IDs that didn't get processed: ")
+    for i in range(510):
+        if i not in dict_fileid_to_categoryid:
+            print(i, dictionary[i])
 
     # Debugging, print out the new dictionary
     # for key in dict_fileid_to_categoryid:
@@ -143,10 +160,11 @@ def extract_headerrow_from_csvfile(filepath: str):
 
     Parameter:
         filepath (string): file path to cuad category csv file.
+
     Returns:
-        Iterable[tuple]:
-            Dictionary of all 41 categories in a legal contract
-            Set of values from the aforementioned dictionary
+        tuple:
+            a Dictionary of all 41 categories in a legal contract
+            a Set of values from the aforementioned dictionary
     """
 
     header_cols = pd.read_csv(filepath, usecols=['Category (incl. context and answer)'])
@@ -172,9 +190,7 @@ def extract_headerrow_from_csvfile(filepath: str):
 def inverted_dictionary(dictionary: dict):
     """
     Helper Method. Inverts the dictionary by swapping changing key-value pairs into value-key pairs.
-
-    Returns:
-        Iterable[dict]: inverted dictionary
+    Returns the inverted dictionary.
     """
     ret_dict = {value: key for key, value in dictionary.items()}
 
@@ -183,12 +199,17 @@ def inverted_dictionary(dictionary: dict):
 
 def extract_clausesentences_cols(filepath: str, clauses_cols: list):
     """
-    Extracts all the rows from the 41 clause columns. Stores each column's rows into a dictionary. Each dictionary
-    is appended into a list.
+    Extracts all the rows from the 41 clause columns in master_clauses.csv
+    Stores each column's rows into a dictionary. Each dictionary is appended into a list.
+
+    Parameter:
+        filepath (str): master_clauses.csv filepath
+        clauses_col (list): list of columns -- clause names -- to extract
 
     Returns:
         Iterable[list]: list of dictionaries
     """
+
     list_of_dict_clausesentences_to_fileid = []
     for col in clauses_cols:
         list_of_dict_clausesentences_to_fileid.append(pd.read_csv(filepath, usecols=[col]))
@@ -198,8 +219,8 @@ def extract_clausesentences_cols(filepath: str, clauses_cols: list):
 
 def preprocessing(raw_sentence):
     """
-    Helper method for extact_and_create_new_csv().
-    Takes in an unprocessed string representing a sentence and processing it classic ml classifiers
+    Helper method for extract_and_create_new_csv().
+    Takes in an unprocessed string representing a sentence and processes it for classic ml algorithms.
     """
     # Set of stop words in English
     STOP_WORDS = set(stopwords.words('english'))
@@ -236,30 +257,31 @@ def preprocessing(raw_sentence):
 
 def extract_and_create_sentencelevel_csv():
     """
-    Creates a new CSV file with four columns: Sentence Text, Sentence ID, File ID, and Category ID.
+    Creates a new CSV file with four columns: (1) Sentence Text, (2) Sentence ID, (3) File ID, and (4) Category ID.
 
-        Sentence Text column rows are made by extracting all the clause columns (41) from master csv. Each sentence text is kept
+        (1) Sentence Text column rows are made by extracting all the clause columns (41) from master csv. Each sentence text is kept
         in its original form as found in their respective legal contract. Sentences are also preprocessed to extract
         features.
 
-        Sentence ID column rows are made by vectoring the clause a sentence belongs to into a number.
+        (2) Sentence ID column rows are made by vectoring the clause a sentence belongs to into a number.
 
-        File ID column rows are made by vectoring the file name a clause comes from
+        (3) File ID column rows are made by vectoring the file name a clause belongs to.
 
-        Category ID column rows are made by vectoring the legal contract domain that the clause comes from
+        (4) Category ID column rows are made by vectoring the legal contract domain that the clause belongs to.
 
-
-    Returns three lists:
-        List #1 contains all rows from Sentence Text column
-        List #2 contains all rows ids from Clause ID column
-        List #3 contains all rows from Category ID column
+    Returns:
+        List of List:
+            List #1 contains all rows from Sentence Text column
+            List #2 contains all rows ids from Clause ID column
+            List #3 contains all rows from Category ID column
     """
 
     dict_fileid_to_categoryid = convert_dictval_to_id(dictionary=DICT_FILEID_TO_RAWCATEGORY)
-    tuple_result = extract_headerrow_from_csvfile(filepath=r'C:\Users\yiyan\Desktop\Legal Text Classification\tf_idf\category_descriptions.csv')
+    tuple_result = extract_headerrow_from_csvfile(
+        filepath=r'C:\Users\yiyan\Desktop\Legal Text Classification\tf_idf\category_descriptions.csv')
     clauses = list(tuple_result[1])
     list_of_dict_clausesentences_to_fileid = extract_clausesentences_cols(
-        filepath=masterclauses_filepath, clauses_cols=clauses)
+        filepath=master_clauses_fp, clauses_cols=clauses)
     dict_clauses_to_clauseid = inverted_dictionary(tuple_result[0])
 
     output_dict = {"Sentence Text": [], "Sentence ID": [], "File ID": [], "Category ID": []}
@@ -313,16 +335,18 @@ def extract_and_create_documentlevel_csv():
     """
     Creates a new CSV file with three columns: Document Text, File ID, and Category ID.
 
-    Returns two lists:
-        List #1 contains all rows from Document Text column
-        List #2 contains all rows from Category ID column
+    Returns:
+        List of Lists:
+            List #1 contains all rows from Document Text column
+            List #2 contains all rows from File ID column
+            List #3 contains all rows from Category ID column
     """
     result = extract_and_create_sentencelevel_csv()
     all_sentences = result[0]
     all_fileid = result[2]
 
     df = pd.DataFrame({"Document Text": all_sentences,
-                      "File ID": all_fileid})
+                       "File ID": all_fileid})
     df = df.groupby("File ID", as_index=False)["Document Text"].apply(' '.join)
 
     dict_fileid_to_categoryid = convert_dictval_to_id(dictionary=DICT_FILEID_TO_RAWCATEGORY)

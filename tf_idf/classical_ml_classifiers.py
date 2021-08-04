@@ -1,3 +1,22 @@
+"""
+@author: Yi Yang
+@contact: yyang2@bowdoin.edu
+@date: 8-4-2021
+@desc:
+
+This script utilizes the process_clauses_from_mastercsv.py script file.
+Uses the two CSV files created from the above script file to run several traditional machine learning algorithms.
+Stores the accuracy score and other relevant results of the algorithm into a text file.
+
+This script requires that that all the imported modules and packages below to be installed within the Python environment
+you are running the script in.
+
+Also, file paths have been hard-coded, and requires user to manually change them in the code.
+
+The file can also be imported as a module, and contains the following functions:
+    - tf_idf_representation
+    - model_fitting
+"""
 import lightgbm
 import nltk
 from process_clauses_from_mastercsv import *
@@ -22,7 +41,19 @@ from sklearn import tree
 import pandas as pd
 import numpy as np
 
+# Traditional ML Classifiers
+nb_classifier = MultinomialNB()
+knn_classifier = KNeighborsClassifier()
+cart_classifier = tree.DecisionTreeClassifier()
+svc_classifer = SVC()   # C-Support Vector Classification. Implements the "One-Versus-One" approach
+linearsvc_classifier = LinearSVC() # Implements the "One-Versus-Rest" approach
+rf_classifier = RandomForestClassifier(n_estimators=3000, random_state=0)
+# c45_model()
+xgboost_classifier = xgb.XGBClassifier(objective='multi:softmax')
+lightgbm_classifier = lgb.LGBMClassifier()
+
 # Check for overfitting using this guide: https://www.kaggle.com/prashant111/lightgbm-classifier-in-python
+
 
 def tf_idf_representation(list_of_sentences, labels):
     # Bag of Words
@@ -30,13 +61,9 @@ def tf_idf_representation(list_of_sentences, labels):
                                  stop_words=stopwords.words('english'))
     X = vectorizer.fit_transform(list_of_sentences).toarray()
     Y = labels
-    # TF-IDF
+    # TF-IDF Conversion
     tfidfconverter = TfidfTransformer()
     X = tfidfconverter.fit_transform(X).toarray()
-    # print(type(X))
-    # print(X)
-    # print(type(Y))
-    # print(Y)
 
     print("tf-idf completed")
 
@@ -89,18 +116,6 @@ if __name__ == '__main__':
 
     X, Y = tf_idf_representation(list_of_sentences=list_of_text, labels=doc_labels)
     X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=0)
-
-    nb_classifier = MultinomialNB()
-    knn_classifier = KNeighborsClassifier()
-    cart_classifier = tree.DecisionTreeClassifier()
-    # C-Support Vector Classification. Implements the "One-Versus-One" approach
-    svc_classifer = SVC()
-    # Implements the "One-Versus-Rest" approach
-    linearsvc_classifier = LinearSVC()
-    rf_classifier = RandomForestClassifier(n_estimators=3000, random_state=0)
-    # c45_model()
-    xgboost_classifier = xgb.XGBClassifier(objective='multi:softmax')
-    lightgbm_classifier = lgb.LGBMClassifier()
 
     modelfitting(classifier=lightgbm_classifier)
 
